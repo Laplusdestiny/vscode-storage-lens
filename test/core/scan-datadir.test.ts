@@ -93,6 +93,21 @@ describe('scanWorkspaceStorage', () => {
     expect(entries[0].markers).toEqual([]);
   });
 
+  it('does not touch network paths', async () => {
+    const root = await makeTree({
+      'data/User/workspaceStorage/n1/workspace.json': JSON.stringify({ folder: 'file://server/share/proj' }),
+      'data/User/workspaceStorage/n2/workspace.json': JSON.stringify({ folder: 'file://wsl.localhost/Ubuntu/home/u/proj' }),
+    });
+    const checked: string[] = [];
+    const entries = await scanWorkspaceStorage(envFor(root, { platform: 'win32' }), async (p) => {
+      checked.push(p);
+      return false;
+    });
+    expect(checked).toEqual([]);
+    expect(entries.map((e) => e.label).sort()).toEqual(['proj', 'proj']);
+    expect(entries.every((e) => e.markers.length === 0)).toBe(true);
+  });
+
   it('checks vscode-remote paths only when remote', async () => {
     const root = await makeTree({ 'srv/proj': null });
     const remoteUri = `vscode-remote://ssh-remote%2Bhost${encodeURI(join(root, 'srv', 'missing').split('\\').join('/'))}`;

@@ -124,9 +124,52 @@ describe('scanExtensionData', () => {
     expect(byLabel['state.vscdb']).toBeUndefined();
   });
 
+  it('marks nothing orphan when a list is unreadable', async () => {
+    const { root, extensionsDir } = await setup({
+      'ext/extensions.json': '[',
+      'ext/disabled.ext-1.0.0': null,
+      'data/User/globalStorage/disabled.ext/x': 'x',
+    });
+    const entries = await scanExtensionData(envFor(root, { extensionsDir }));
+    expect(entries[0].deletable).toBe(false);
+    expect(entries[0].markers).toEqual([]);
+  });
+
+  it('marks nothing orphan when the default list is missing', async () => {
+    const { root, extensionsDir } = await setup({
+      'ext/disabled.ext-1.0.0': null,
+      'data/User/globalStorage/disabled.ext/x': 'x',
+    });
+    const entries = await scanExtensionData(envFor(root, { extensionsDir }));
+    expect(entries[0].deletable).toBe(false);
+  });
+
+  it('ignores folders that are not extension ids', async () => {
+    const { root, extensionsDir } = await setup({
+      'ext/extensions.json': list(),
+      'data/User/globalStorage/emptyWindowChatSessions/x': 'x',
+    });
+    const entries = await scanExtensionData(envFor(root, { extensionsDir }));
+    expect(entries[0].deletable).toBe(false);
+    expect(entries[0].markers).toEqual([]);
+  });
+
+  it('treats built-in extensions from appRoot as known', async () => {
+    const { root, extensionsDir } = await setup({
+      'ext/extensions.json': list(),
+      'app/extensions/copilot-chat/package.json': JSON.stringify({ publisher: 'GitHub', name: 'copilot-chat' }),
+      'data/User/globalStorage/github.copilot-chat/x': 'x',
+    });
+    const entries = await scanExtensionData(envFor(root, { extensionsDir }));
+    expect(entries[0].deletable).toBe(false);
+  });
+
   it('profile globalStorage is labelled', async () => {
-    const root = await makeTree({ 'data/User/profiles/p1/globalStorage/gone.ext/x': 'x' });
-    const entries = await scanExtensionData(envFor(root));
+    const { root, extensionsDir } = await setup({
+      'ext/extensions.json': list(),
+      'data/User/profiles/p1/globalStorage/gone.ext/x': 'x',
+    });
+    const entries = await scanExtensionData(envFor(root, { extensionsDir }));
     expect(entries).toHaveLength(1);
     expect(entries[0].label.endsWith(' [プロファイル p1]')).toBe(true);
     expect(entries[0].deletable).toBe(true);
@@ -138,6 +181,7 @@ describe('scanExtensionData', () => {
       'data/User/profiles/p1/extensions.json': list(['c.three', 'c.three-1.0.0']),
     });
     const ids = await collectKnownExtensionIds(envFor(root, { extensionsDir, activeExtensionIds: ['vscode.git'] }));
-    expect([...ids].sort()).toEqual(['a.one', 'c.three', 'vscode.git']);
+    expect([...ids.ids].sort()).toEqual(['a.one', 'c.three', 'vscode.git']);
+    expect(ids.complete).toBe(true);
   });
 });

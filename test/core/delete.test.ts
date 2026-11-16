@@ -5,6 +5,7 @@ import {
   buildConfirmMessage,
   buildDeleteCommand,
   deleteEntries,
+  revealCommand,
   planDeletion,
 } from '../../src/core/delete';
 import { OTHER_WINDOW_WARNING } from '../../src/core/policy';
@@ -91,9 +92,19 @@ describe('deleteEntries', () => {
       removed.push(p);
     });
     expect(result.deleted).toEqual([ok]);
-    expect(result.failed).toEqual([busy, unsafe]);
+    expect(result.failed).toEqual([busy]);
+    expect(result.refused).toEqual([unsafe]);
     expect(result.freedBytes).toBe(100);
     expect(removed).toEqual([ok.path]);
+  });
+});
+
+describe('revealCommand', () => {
+  it('pre-types a delete command only for deletable, safe entries', () => {
+    expect(revealCommand(entry('logs', join(D, 'logs', 'old')), env)).toBe(`rm -rf -- '${join(D, 'logs', 'old')}'`);
+    expect(revealCommand(entry('logs', join(D, 'logs', 'now'), { deletable: false, markers: ['inUse'] }), env)).toBeUndefined();
+    expect(revealCommand(entry('extensions', join(env.extensionsDir!, 'a.one-1.0.0'), { deletable: false }), env)).toBeUndefined();
+    expect(revealCommand(entry('cache', join(U, 'settings.json')), env)).toBeUndefined();
   });
 });
 

@@ -20,4 +20,5 @@ export const MARKER_LABELS: Record<Marker, string> = {
   orphan: '(アンインストール済み)',
   missingSource: '(元フォルダなし)',
   inUse: '(使用中)',
+  inUseUnknown: '(使用中か判定できません)',
 };

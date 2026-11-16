@@ -1,6 +1,6 @@
 import { dirname } from 'node:path';
 import * as vscode from 'vscode';
-import { buildConfirmMessage, buildDeleteCommand, deleteEntries, planDeletion } from '../core/delete';
+import { buildConfirmMessage, buildDeleteCommand, deleteEntries, planDeletion, revealCommand } from '../core/delete';
 import { formatBytes } from '../core/format';
 import { DELETE_PERMANENTLY } from '../core/policy';
 import type { Entry } from '../core/types';
@@ -21,15 +21,17 @@ async function trashRemove(p: string): Promise<void> {
 export function registerCommands(context: vscode.ExtensionContext, provider: StorageTreeProvider): void {
   const env = provider.env;
 
-  const reveal = async (path: string) => {
+  const reveal = async (entry: Entry) => {
     if (!env.isRemote) {
-      await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(path));
+      await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(entry.path));
       return;
     }
-    // リモートは OS のエクスプローラーで開けないので、ターミナルに削除コマンドを入力済み・未実行で用意する
-    const terminal = vscode.window.createTerminal({ name: 'Storage Lens', cwd: dirname(path) });
+    // リモートは OS のエクスプローラーで開けないので、そのフォルダでターミナルを開く。
+    // 削除してよいものだけ、削除コマンドを入力済み・未実行で用意する
+    const terminal = vscode.window.createTerminal({ name: 'Storage Lens', cwd: dirname(entry.path) });
     terminal.show();
-    terminal.sendText(buildDeleteCommand([path], 'linux'), false);
+    const command = revealCommand(entry, env);
+    if (command) terminal.sendText(command, false);
   };
 
   const deleteTargets = async (candidates: Entry[]) => {
@@ -44,6 +46,11 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Sto
     const { immediate, deferred } = planDeletion(targets);
     const result = await deleteEntries(immediate, env, DELETE_PERMANENTLY ? undefined : trashRemove);
     const closeLater = [...deferred, ...result.failed];
+    if (result.refused.length > 0) {
+      void vscode.window.showErrorMessage(
+        `保護されたパスのため ${result.refused.length} 件を削除しませんでした: ${result.refused.map((e) => e.label).join(', ')}`,
+      );
+    }
 
     if (closeLater.length > 0) {
       const size = formatBytes(closeLater.reduce((sum, e) => sum + (e.size ?? 0), 0));
@@ -54,7 +61,7 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Sto
           COPY_COMMAND,
         )
         .then(async (choice) => {
-          if (choice === OPEN_FOLDER) await reveal(closeLater[0].path);
+          if (choice === OPEN_FOLDER) await reveal(closeLater[0]);
           if (choice === COPY_COMMAND) {
             await vscode.env.clipboard.writeText(buildDeleteCommand(closeLater.map((e) => e.path), env.platform));
             void vscode.window.showInformationMessage('削除コマンドをコピーしました。VS Code を閉じてから実行してください。');
@@ -112,7 +119,7 @@ export function registerCommands(context: vscode.ExtensionContext, provider: Sto
     }),
     vscode.commands.registerCommand('storageLens.reveal', (node: unknown) => {
       const entry = entryOf(node);
-      return entry ? reveal(entry.path) : undefined;
+      return entry ? reveal(entry) : undefined;
     }),
     vscode.commands.registerCommand('storageLens.copyPath', async (node: unknown) => {
       const entry = entryOf(node);

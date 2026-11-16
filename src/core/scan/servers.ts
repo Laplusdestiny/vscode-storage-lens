@@ -2,18 +2,19 @@ import { readFile, readlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { findServerLayout, isInside, samePath } from '../paths';
 import { CHECK_SERVER_IN_USE } from '../policy';
-import type { Entry, EnvInfo } from '../types';
+import type { Entry, EnvInfo, Marker } from '../types';
 import { listChildren, makeEntry } from './util';
 
 function touches(p: string, candidate: string): boolean {
   return samePath(p, candidate) || isInside(p, candidate);
 }
 
-/** procRoot/<pid>/cmdline と exe を見て、候補のうち使用中のものを返す */
-export async function pathsInUse(candidates: string[], procRoot: string): Promise<Set<string>> {
+/** procRoot/<pid>/cmdline と exe を見て、候補のうち使用中のものを返す。procRoot を読めなければ undefined */
+export async function pathsInUse(candidates: string[], procRoot: string): Promise<Set<string> | undefined> {
   const used = new Set<string>();
-  for (const child of await listChildren(procRoot)) {
-    if (!/^\d+$/.test(child.name)) continue;
+  const pids = (await listChildren(procRoot)).filter((child) => /^\d+$/.test(child.name));
+  if (pids.length === 0) return undefined;
+  for (const child of pids) {
     const pidDir = join(procRoot, child.name);
     const seen: string[] = [];
     try {
@@ -53,11 +54,13 @@ export async function scanOldServers(env: EnvInfo, procRoot = '/proc'): Promise<
     }
   }
 
-  const used = CHECK_SERVER_IN_USE ? await pathsInUse(candidates.map((c) => c.path), procRoot) : new Set<string>();
-  return candidates.map(({ path, label }) =>
-    makeEntry('oldServers', path, label, {
-      deletable: !used.has(path),
-      markers: used.has(path) ? ['inUse'] : [],
-    }),
-  );
+  if (!CHECK_SERVER_IN_USE) {
+    return candidates.map(({ path, label }) => makeEntry('oldServers', path, label, { deletable: true }));
+  }
+  // /proc が無い(macOS・Windows のホストなど)と使用中か分からないので、安全側に倒して削除不可にする
+  const used = env.platform === 'linux' ? await pathsInUse(candidates.map((c) => c.path), procRoot) : undefined;
+  return candidates.map(({ path, label }) => {
+    const markers: Marker[] = used === undefined ? ['inUseUnknown'] : used.has(path) ? ['inUse'] : [];
+    return makeEntry('oldServers', path, label, { deletable: markers.length === 0, markers });
+  });
 }

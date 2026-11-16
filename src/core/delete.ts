@@ -57,19 +57,39 @@ export async function deleteEntries(
   entries: Entry[],
   env: EnvInfo,
   remove: (p: string) => Promise<void> = defaultRemove,
-): Promise<{ deleted: Entry[]; failed: Entry[]; freedBytes: number }> {
+): Promise<{ deleted: Entry[]; failed: Entry[]; refused: Entry[]; freedBytes: number }> {
   const deleted: Entry[] = [];
   const failed: Entry[] = [];
+  const refused: Entry[] = [];
   for (const entry of entries) {
+    if (!isSafeToDelete(entry.path, env)) {
+      // 保護パスは「閉じてから削除」にも回さない(削除コマンドを渡してしまわないため)
+      refused.push(entry);
+      continue;
+    }
     try {
-      assertSafeToDelete(entry.path, env);
       await remove(entry.path);
       deleted.push(entry);
     } catch {
       failed.push(entry);
     }
   }
-  return { deleted, failed, freedBytes: deleted.reduce((sum, e) => sum + (e.size ?? 0), 0) };
+  return { deleted, failed, refused, freedBytes: deleted.reduce((sum, e) => sum + (e.size ?? 0), 0) };
+}
+
+function isSafeToDelete(p: string, env: EnvInfo): boolean {
+  try {
+    assertSafeToDelete(p, env);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** リモートの「フォルダを開く」でターミナルに入力しておくコマンド。削除してよいものだけ返す */
+export function revealCommand(entry: Entry, env: EnvInfo): string | undefined {
+  if (!entry.deletable || !isSafeToDelete(entry.path, env)) return undefined;
+  return buildDeleteCommand([entry.path], env.platform);
 }
 
 export function buildDeleteCommand(paths: string[], platform: NodeJS.Platform): string {

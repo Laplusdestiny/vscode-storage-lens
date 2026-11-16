@@ -8,7 +8,8 @@ import { listChildren, makeEntry, pathExists, readJson } from './util';
 function localPathOf(uri: string, env: EnvInfo): string | undefined {
   try {
     const url = new URL(uri);
-    if (url.protocol === 'file:') return fileURLToPath(url);
+    // ホスト付き(UNC・\\wsl.localhost など)はネットワークや WSL を起こしてしまうので確認しない
+    if (url.protocol === 'file:') return url.hostname ? undefined : fileURLToPath(url, { windows: env.platform === 'win32' });
     if (url.protocol === 'vscode-remote:' && env.isRemote) return decodeURIComponent(url.pathname);
   } catch {
     // 不正な URI は確認しない

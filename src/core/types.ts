@@ -15,7 +15,8 @@ export type Marker =
   | 'unlisted'
   | 'orphan'
   | 'missingSource'
-  | 'inUse';
+  | 'inUse'
+  | 'inUseUnknown';
 
 export interface Entry {
   /** 絶対パス(一意キー) */

@@ -14,7 +14,7 @@ async function serverHome() {
     'home/code-old3': 'cli',
     'home/code-cur': 'cli',
     'home/data/User': null,
-    'proc': null,
+    'proc/1/cmdline': '/sbin/init\0',
   });
   const H = join(root, 'home');
   const env = envFor(root, {
@@ -46,6 +46,19 @@ describe('scanOldServers', () => {
     expect(entries.find((e) => e.path === join(H, 'code-old3'))!.deletable).toBe(true);
   });
 
+  it('cannot tell usage without /proc', async () => {
+    const { root, env } = await serverHome();
+    const entries = await scanOldServers(env, join(root, 'no-proc'));
+    expect(entries).toHaveLength(3);
+    expect(entries.every((e) => !e.deletable && e.markers.includes('inUseUnknown'))).toBe(true);
+  });
+
+  it('cannot tell usage on non-linux hosts', async () => {
+    const { env, proc } = await serverHome();
+    const entries = await scanOldServers({ ...env, platform: 'darwin' }, proc);
+    expect(entries.every((e) => !e.deletable && e.markers.includes('inUseUnknown'))).toBe(true);
+  });
+
   it('local window has no servers', async () => {
     const { env, proc } = await serverHome();
     expect(await scanOldServers({ ...env, isRemote: false }, proc)).toEqual([]);
@@ -62,6 +75,6 @@ describe('pathsInUse', () => {
     const root = await makeTree({ 'srv/a/node': 'n', 'srv/b': null, 'proc/7': null, 'proc/self-ish': null });
     await symlink(join(root, 'srv', 'a', 'node'), join(root, 'proc', '7', 'exe'));
     const used = await pathsInUse([join(root, 'srv', 'a'), join(root, 'srv', 'b')], join(root, 'proc'));
-    expect([...used]).toEqual([join(root, 'srv', 'a')]);
+    expect([...(used ?? [])]).toEqual([join(root, 'srv', 'a')]);
   });
 });
