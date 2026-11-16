@@ -1,0 +1,7 @@
+
+# APM dependencies
+apm_modules/
+
+# Agent tools directories (apm install で再生成)
+.agents/
+.claude/
