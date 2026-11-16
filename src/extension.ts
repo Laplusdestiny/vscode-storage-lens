@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { StorageTreeProvider, type Node } from './vscode/treeProvider';
+import { registerCommands } from './vscode/commands';
 import { collectEnv } from './vscode/env';
 
 export const VIEW_ID = 'storageLens.view';
@@ -32,6 +33,7 @@ export function activate(context: vscode.ExtensionContext): { provider?: Storage
       if (event.visible && !provider.hasLoaded) void provider.refresh();
     }),
   );
+  registerCommands(context, provider);
   if (view.visible) void provider.refresh();
   return { provider };
 }

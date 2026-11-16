@@ -37,6 +37,124 @@
           "name": "容量"
         }
       ]
+    },
+    "commands": [
+      {
+        "command": "storageLens.refresh",
+        "title": "更新",
+        "category": "Storage Lens",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "storageLens.deleteSelected",
+        "title": "選んだものを削除",
+        "category": "Storage Lens",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "storageLens.uninstallSelected",
+        "title": "選んだ拡張をアンインストール",
+        "category": "Storage Lens",
+        "icon": "$(extensions)"
+      },
+      {
+        "command": "storageLens.deleteEntry",
+        "title": "削除",
+        "category": "Storage Lens",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "storageLens.uninstall",
+        "title": "アンインストール",
+        "category": "Storage Lens",
+        "icon": "$(circle-slash)"
+      },
+      {
+        "command": "storageLens.reveal",
+        "title": "フォルダを開く",
+        "category": "Storage Lens",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "storageLens.copyPath",
+        "title": "パスをコピー",
+        "category": "Storage Lens",
+        "icon": "$(copy)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "storageLens.refresh",
+          "when": "view == storageLens.view",
+          "group": "navigation@1"
+        },
+        {
+          "command": "storageLens.deleteSelected",
+          "when": "view == storageLens.view",
+          "group": "navigation@2"
+        },
+        {
+          "command": "storageLens.uninstallSelected",
+          "when": "view == storageLens.view",
+          "group": "more@1"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "storageLens.deleteEntry",
+          "when": "view == storageLens.view && viewItem =~ /deletable/",
+          "group": "inline@1"
+        },
+        {
+          "command": "storageLens.uninstall",
+          "when": "view == storageLens.view && viewItem =~ /extension/",
+          "group": "inline@2"
+        },
+        {
+          "command": "storageLens.reveal",
+          "when": "view == storageLens.view && viewItem =~ /^entry/",
+          "group": "inline@3"
+        },
+        {
+          "command": "storageLens.deleteEntry",
+          "when": "view == storageLens.view && viewItem =~ /deletable/",
+          "group": "1_actions@1"
+        },
+        {
+          "command": "storageLens.uninstall",
+          "when": "view == storageLens.view && viewItem =~ /extension/",
+          "group": "1_actions@2"
+        },
+        {
+          "command": "storageLens.reveal",
+          "when": "view == storageLens.view && viewItem =~ /^entry/",
+          "group": "1_actions@3"
+        },
+        {
+          "command": "storageLens.copyPath",
+          "when": "view == storageLens.view && viewItem =~ /^entry/",
+          "group": "2_copy@1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "storageLens.deleteEntry",
+          "when": "false"
+        },
+        {
+          "command": "storageLens.uninstall",
+          "when": "false"
+        },
+        {
+          "command": "storageLens.reveal",
+          "when": "false"
+        },
+        {
+          "command": "storageLens.copyPath",
+          "when": "false"
+        }
+      ]
     }
   },
   "scripts": {
