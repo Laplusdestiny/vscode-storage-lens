@@ -1,0 +1,77 @@
+name: PR build (.vsix)
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-vsix-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Package .vsix
+        id: package
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          version=$(node -p "require('./package.json').version")
+          short_sha=${HEAD_SHA::7}
+          if [ -n "$PR_NUMBER" ]; then
+            name="vscode-storage-lens-${version}-pr${PR_NUMBER}-${short_sha}"
+          else
+            name="vscode-storage-lens-${version}-${short_sha}"
+          fi
+          mkdir -p artifacts
+          npx vsce package --out "artifacts/${name}.vsix"
+          echo "name=${name}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload .vsix
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package.outputs.name }}
+          path: artifacts/${{ steps.package.outputs.name }}.vsix
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Summary
+        env:
+          NAME: ${{ steps.package.outputs.name }}
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+        run: |
+          {
+            echo "## .vsix を手元で試す"
+            echo
+            echo "1. [${NAME}](${ARTIFACT_URL}) をダウンロードして zip を展開する(14 日間保存)"
+            echo "2. VS Code で拡張機能ビューの「…」→「VSIX からのインストール…」を選ぶか、次を実行する"
+            echo
+            echo '```'
+            echo "code --install-extension ${NAME}.vsix"
+            echo '```'
+            echo
+            echo "リモート(SSH / WSL / Dev Container)で試すときは、インストール後に拡張機能ビューで「SSH: <ホスト> にインストール」も押してください。"
+          } >> "$GITHUB_STEP_SUMMARY"

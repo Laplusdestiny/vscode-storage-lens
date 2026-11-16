@@ -46,6 +46,11 @@ npm run package
 code --install-extension vscode-storage-lens-0.1.0.vsix
 ```
 
+### PR のビルドを試す
+
+PR を作ったり更新したりすると、GitHub Actions(`.github/workflows/pr-vsix.yml`)が型チェック・テストのあと `.vsix` を作ります。
+PR の Checks から「PR build (.vsix)」の実行を開き、Summary にあるリンクから `vscode-storage-lens-<版>-pr<番号>-<コミット>` をダウンロードして展開し、上と同じ手順で入れてください(14 日間保存)。
+
 ### リモートで使う
 
 この拡張は「ワークスペース側」で動くため、リモートでは接続先にも入れる必要があります。
