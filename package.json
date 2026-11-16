@@ -162,7 +162,7 @@
     "watch": "node esbuild.mjs --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:smoke": "vscode-test",
+    "test:smoke": "npm run build && node esbuild.mjs --smoke && vscode-test",
     "package": "vsce package",
     "vscode:prepublish": "npm run build"
   },
