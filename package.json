@@ -20,7 +20,25 @@
   ],
   "main": "./dist/extension.js",
   "activationEvents": [],
-  "contributes": {},
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "storageLens",
+          "title": "Storage Lens",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "storageLens": [
+        {
+          "id": "storageLens.view",
+          "name": "容量"
+        }
+      ]
+    }
+  },
   "scripts": {
     "build": "node esbuild.mjs",
     "watch": "node esbuild.mjs --watch",
