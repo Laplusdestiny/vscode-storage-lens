@@ -5,3 +5,10 @@ apm_modules/
 # Agent tools directories (apm install で再生成)
 .agents/
 .claude/
+
+# Node / build
+node_modules/
+dist/
+out/
+*.vsix
+.vscode-test/
