@@ -19,3 +19,4 @@ tsconfig.json
 .apm-local/**
 .github/**
 artifacts/**
+media/extension-icon.svg

@@ -4,6 +4,7 @@
   "description": "VS Code のキャッシュ・拡張機能・ワークスペース状態の容量を一覧して掃除する",
   "version": "0.1.0",
   "publisher": "laplusdestiny",
+  "icon": "media/icon.png",
   "license": "MIT",
   "repository": {
     "type": "git",
