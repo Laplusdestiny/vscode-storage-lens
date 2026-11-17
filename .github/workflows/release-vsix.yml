@@ -1,0 +1,77 @@
+name: Release (.vsix)
+
+on:
+  release:
+    types: [published]
+  # 失敗したときのやり直し用。既存のリリースのタグを指定して手動で実行する
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 成果物を追加するリリースのタグ(例 v0.1.0)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-vsix-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ env.TAG }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Check tag against package.json version
+        run: |
+          version=$(node -p "require('./package.json').version")
+          prerelease=$(gh release view "$TAG" --json isPrerelease --jq .isPrerelease)
+          if [ "${TAG#v}" = "$version" ]; then
+            echo "タグ ${TAG} と package.json の版 ${version} は一致しています。"
+          elif [ "$prerelease" = "true" ]; then
+            echo "::warning::タグ ${TAG} と package.json の版 ${version} が一致しません(プレリリースなので続行します)。"
+          else
+            echo "::error::タグ ${TAG} と package.json の版 ${version} が一致しません。package.json の version を直してタグを打ち直してください。"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Package .vsix
+        id: package
+        run: |
+          file="vscode-storage-lens-${TAG#v}.vsix"
+          npx vsce package --out "$file"
+          echo "file=${file}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload to the release
+        env:
+          FILE: ${{ steps.package.outputs.file }}
+        run: |
+          gh release upload "$TAG" "$FILE" --clobber
+          {
+            echo "## リリース ${TAG} に成果物を追加しました"
+            echo
+            echo "- \`${FILE}\`"
+            echo "- $(gh release view "$TAG" --json url --jq .url)"
+          } >> "$GITHUB_STEP_SUMMARY"
